@@ -1,0 +1,106 @@
+:root {
+    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+
+    color-scheme: light dark;
+    color: rgba(255, 255, 255, 0.87);
+    background-color: #242424;
+
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    place-items: center;
+}
+
+h1 {
+    font-size: 3.2em;
+    line-height: 1.1;
+}
+
+button {
+    border-radius: 8px;
+    border: 1px solid lightgray;
+    padding: 0.6em 1.2em;
+    font-size: 1em;
+    font-weight: 500;
+    font-family: inherit;
+    background-color: #1a1a1a;
+    cursor: pointer;
+    transition: border-color 0.25s;
+}
+button:hover {
+    border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+    outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        color: #213547;
+        background-color: #ffffff;
+    }
+
+    button {
+        background-color: #f9f9f9;
+    }
+}
+
+@media screen and (max-width: 600px) {
+    h1 {
+        color: red;
+    }
+}
+
+p {
+    text-align: center;
+    font: bold 1.5rem serif;
+    margin: 0;
+}
+
+.board {
+    display: table;
+    margin: 0 auto;
+    border-spacing: 2px;
+    width: fit-content;
+    font-weight: bold;
+    font-family: 'Hiragino Kaku Gothic Pro', 'ヒラギノ角ゴ Pro W3', 'メイリオ', Meiryo, 'ＭＳ Ｐゴシック', sans-serif;
+}
+
+.board>div {
+    display: table-row;
+}
+
+.board>div>div {
+    display: table-cell;
+    vertical-align: middle;
+    border-radius: 4px;
+    height: 2.0em;
+    width: 1.5em;
+    border: 2px solid black;
+    font-weight: bold;
+    text-align: center;
+    cursor: default;
+    background: transparent;
+    user-select: none;
+}
+
+.board>div>div.wall {
+    background: black;
+}
+
+.board>div>div.none {
+    visibility: hidden;
+}
+
+.board>div>div.selected {
+    border: 2px solid red;
+}
