@@ -29,45 +29,50 @@ const boardHeight = 8 + 4;
 // ボードの処理
 // 盤面の座標変換
 // 配列のインデックスをX座標に変換
-const getXCoordinate = (position: number): number => position % boardWidth;
+const getX = (position: number): number => position % boardWidth;
 // 配列のインデックスをY座標に変換
-const getYCoordinate = (position: number): number => floor(position / boardWidth);
+const getY = (position: number): number => floor(position / boardWidth);
 
 // XY座標を配列のインデックスに変換
-const fromXYCoordinates = (x: number, y: number): number => x + y * boardWidth;
-const fromYXCoordinates = (y: number, x: number): number => fromXYCoordinates(x, y);
+const fromXY = (x: number, y: number): number => x + y * boardWidth;
+const fromYX = (y: number, x: number): number => fromXY(x, y);
 
 // 盤面board上のインデックスpを空白が続く限りdずつ移動する関数
-const move = (board: number[], position: number, direction: number): number => {
-    return board[position + direction] ? position : move(board, position + direction, direction);
+const move = (board: number[], tenP: number, kyoriD: number): number => {
+    return board[tenP + kyoriD] ? tenP : move(board, tenP + kyoriD, kyoriD);
 };
 
 // 経路判定
 const isPassable = (
     board: number[], // ゲームボードを表すnumber型の配列
-    start: number, // 開始位置のインデックス
-    end: number, // 終了位置のインデックス
-    getUCoordinate: (position: number) => number, // 配列のインデックスをU座標に変換
-    getVCoordinate: (position: number) => number, // 配列のインデックスをV座標に変換
+    i0: number, // 開始位置のインデックス
+    i1: number, // 終了位置のインデックス
+    getU: (tenP: number) => number, // 配列のインデックスをU座標に変換
+    getV: (tenP: number) => number, // 配列のインデックスをV座標に変換
     getIndexFromCoordinates: (u: number, v: number) => number // U, V座標をインデックスに変換する関数
 ): boolean => {
-    // いっこ移動する
-    const direction = getIndexFromCoordinates(1, 0);
-    //
-    const startU = max(getUCoordinate(move(board, start, -direction)), getUCoordinate(move(board, end, -direction)));
-    const endU = min(getUCoordinate(move(board, start, +direction)), getUCoordinate(move(board, end, +direction)));
-    const startV = min(getVCoordinate(start), getVCoordinate(end)) + 1;
-    const endV = max(getVCoordinate(start), getVCoordinate(end)) - 1;
-    const uRange = generateRange(startU, endU + 1, 1);
-    const vRange = generateRange(startV, endV + 1, 1);
+    // いっこずつ　移動する　単位ベクトル的な
+    const kyoriD = getIndexFromCoordinates(1, 0);
+    //　インデックスのU座標を取得
+    const maxU = max(getU(move(board, i0, -kyoriD)), getU(move(board, i1, -kyoriD)));
+    const minU = min(getU(move(board, i0, +kyoriD)), getU(move(board, i1, +kyoriD)));
+    // インデックスのV座標を取得
+    const minV = min(getV(i0), getV(i1)) + 1;
+    const maxV = max(getV(i0), getV(i1)) - 1;
+    // U・V座標の空白の範囲を生成
+    const uRange = generateRange(maxU, minU + 1, 1);
+    const vRange = generateRange(minV, maxV + 1, 1);
+    // 空白の範囲に他の牌がないか判定
     return uRange.some((u) => vRange.every((v) => board[getIndexFromCoordinates(u, v)] === 0));
 };
 
-const areTilesMatchable = (board: number[], start: number, end: number): boolean =>
-    start !== end &&
-    board[start] === board[end] &&
-    (isPassable(board, start, end, getXCoordinate, getYCoordinate, fromXYCoordinates) ||
-        isPassable(board, start, end, getYCoordinate, getXCoordinate, fromYXCoordinates));
+const areTilesMatchable = (board: number[], p0: number, p1: number): boolean => {
+    return (
+        p0 !== p1 &&
+        board[p0] === board[p1] &&
+        (isPassable(board, p0, p1, getX, getY, fromXY) || isPassable(board, p0, p1, getY, getX, fromYX))
+    );
+};
 
 type BoardState = {
     board: number[];
@@ -78,33 +83,39 @@ type BoardState = {
 const createBoard = (): BoardState => {
     // floor 切り捨て
     // 1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4...
+    const pickRandomElement = (array: number[]): number => array.splice(array.length * random(), 1)[0];
     const tileValues = generateRange(totalTiles).map((index) => 1 + floor(index / 4));
-
     const board = generateRange(boardWidth * boardHeight).map((position) => {
         // minは渡された引数の最小値を返す
         const minDistance = min(
             // 左
-            getXCoordinate(position),
+            getX(position),
             // 上
-            getYCoordinate(position),
+            getY(position),
             // 右
-            boardWidth - 1 - getXCoordinate(position),
+            boardWidth - 1 - getX(position),
             // 下
-            boardHeight - 1 - getYCoordinate(position)
+            boardHeight - 1 - getY(position)
         );
-        // 0は壁
-        // 1は空白
-        // 2以上は牌
+        // -1は壁
+        // 0は空白
+        // 1以上は牌
         return minDistance === 0 ? -1 : minDistance === 1 ? 0 : pickRandomElement(tileValues);
     });
     return { board, target: -1, remainingTiles: totalTiles };
 };
 
 const updateState = (state: BoardState, position: number): BoardState => {
+    // 分割代入
     const { board, target, remainingTiles } = state;
+    // -1が壁で0が空白で1が牌　壁か空白なら何もしない
     if (board[position] <= 0) return state;
+    // targetが-1なら選択中の牌を更新
     if (target < 0) return { board, remainingTiles, target: position };
+    // 間違ってたら元に戻す
     if (!areTilesMatchable(board, target, position)) return { board, remainingTiles, target: -1 };
+    // あってたら消す
+    // 選択状態　または　もういっこがあったら　0(空白)にする
     return {
         board: board.map((value, index) => (index === position || index === target ? 0 : value)),
         target: -1,
@@ -113,9 +124,13 @@ const updateState = (state: BoardState, position: number): BoardState => {
 };
 
 const solveBoard = (state: BoardState): boolean => {
+    // 残り牌があるとき
     while (state.remainingTiles) {
+        // マッチしてないやつ
         const pair = findMatchingPair(state.board);
+        // マッチするやつがないとき
         if (!pair) return false;
+        // マッチするやつがあるとき、全部消す
         state = updateState(state, pair[0]);
         state = updateState(state, pair[1]);
     }
@@ -123,18 +138,25 @@ const solveBoard = (state: BoardState): boolean => {
 };
 
 const findMatchingPair = (board: number[]): [number, number] | undefined => {
+    //
     const pairs: { [key: number]: number[] } = {};
+    // オブジェクトをぐるぐるする
     for (const [position, value] of board.entries()) {
+        // 空白か壁なら何もしない
         if (value <= 0) continue;
+        // まだないなら追加
         if (!pairs[value]) {
             pairs[value] = [position];
             continue;
         }
+        // あったら
         for (const otherPosition of pairs[value]) {
+            // 一致するか判定
             if (areTilesMatchable(board, position, otherPosition)) {
                 return [position, otherPosition];
             }
         }
+        // なかったらpairsに追加
         pairs[value].push(position);
     }
 };
@@ -208,20 +230,24 @@ const main = async () => {
     const view = document.createElement('div');
     view.classList.add('board');
     document.body.appendChild(view);
+
     const cells = generateRange(boardHeight).flatMap((y) => {
         const row = document.createElement('div');
         view.appendChild(row);
         return generateRange(boardWidth).map((x) => {
             const cell = document.createElement('div');
             row.appendChild(cell);
-            cell.onclick = () => render((state = updateState(state, fromXYCoordinates(x, y))));
+            // クリックしたらupdateStateを呼ぶ
+            cell.onclick = () => render((state = updateState(state, fromXY(x, y))));
             return cell;
         });
     });
 
     let previousRemainingTiles = 0;
     const render = ({ board, target, remainingTiles }: BoardState) => {
+        // 指定の範囲の配列作るやつ
         generateRange(boardWidth * boardHeight).forEach((position) => {
+            // 画面側の処理
             const value = board[position];
             const cell = cells[position];
             const classList = cell.classList;
